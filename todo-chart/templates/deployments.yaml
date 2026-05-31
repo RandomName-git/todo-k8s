@@ -1,0 +1,157 @@
+{{- range $name, $config := .Values.microservices }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "todo-chart.namespace" $ }}
+  labels:
+    app: {{ $name }}
+    component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.global.imageRegistry }}/{{ $name }}:{{ $.Values.global.imageTag }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: {{ $config.port }}
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: kubernetes
+            {{- if $config.dbBouncer }}
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://{{ $config.dbBouncer }}:5432/{{ $config.dbName }}"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.secrets.dbSecret }}
+                  key: db_user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.secrets.dbSecret }}
+                  key: db_password
+            {{- end }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.secrets.jwtSecret }}
+                  key: jwt_secret
+            - name: KAFKA_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.secrets.kafkaSecret }}
+                  key: kafka_user
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.secrets.kafkaSecret }}
+                  key: kafka_password
+          volumeMounts:
+            - name: config
+              mountPath: /common-config
+          resources:
+            requests:
+              memory: {{ $config.resources.requestMemory | quote }}
+              cpu: "100m"
+            limits:
+              memory: {{ $config.resources.limitMemory | quote }}
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: {{ $config.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: {{ $config.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: config
+          configMap:
+            name: common-config
+  {{- end }}
+
+  {{- if .Values.eureka.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-server
+  namespace: {{ include "todo-chart.namespace" . }}
+  labels:
+    app: eureka-server
+    component: service-discovery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eureka-server
+  template:
+    metadata:
+      labels:
+        app: eureka-server
+    spec:
+      containers:
+        - name: eureka-server
+          image: {{ .Values.eureka.image }}
+          ports:
+            - containerPort: {{ .Values.eureka.port }}
+          env:
+            - name: EUREKA_INSTANCE_HOSTNAME
+              value: eureka-server
+            - name: SPRING_PROFILES_ACTIVE
+              value: kubernetes
+          resources:
+            {{- toYaml .Values.eureka.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: {{ .Values.eureka.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: {{ .Values.eureka.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+  {{- end }}
+
+  {{- if .Values.zipkin.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin-service
+  namespace: {{ include "todo-chart.namespace" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zipkin-service
+  template:
+    metadata:
+      labels:
+        app: zipkin-service
+    spec:
+      containers:
+        - name: zipkin
+          image: {{ .Values.zipkin.image }}
+          ports:
+            - containerPort: {{ .Values.zipkin.port }}
+          resources:
+            {{- toYaml .Values.zipkin.resources | nindent 12 }}
+  {{- end }}

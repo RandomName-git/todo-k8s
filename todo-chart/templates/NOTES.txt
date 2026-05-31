@@ -3,21 +3,24 @@
 ===============================================================================
 
 1. ПРОВЕРКА СТАТУСА ЗАПУСКА:
-   Чтобы убедиться, что все базы данных, шина Kafka и Java-сервисы поднялись,
-   выполните команду (дождитесь статуса Running и Ready 1/1):
-
-   kubectl get pods -n {{ .Release.Namespace }}
+   kubectl get pods -n {{ include "todo-chart.namespace" . }}
 
 2. ПРОСМОТР ЛОГОВ API GATEWAY:
-   Если хотите посмотреть, как маршрутизируются запросы, включите поток логов:
+   kubectl logs -l app=api-gateway -n {{ include "todo-chart.namespace" . }} -f
 
-   kubectl logs -l app=api-gateway -n {{ .Release.Namespace }} -f
+3. ДОСТУП К ПРИЛОЖЕНИЮ:
+   {{- if .Values.ingress.enabled }}
+   Через Ingress: http://{{ .Values.ingress.host }}
+   {{- end }}
+   Через NodePort (Minikube):
+   minikube service api-gateway -n {{ include "todo-chart.namespace" . }}
 
-3. ЗАПУСК И ДОСТУП К ПРИЛОЖЕНИЮ С КОМПЬЮТЕРА:
-   Так как вы используете Minikube, ваш API Gateway открыт через NodePort.
-   Выполните команду ниже — Minikube сам пробросит порт в Windows и откроет
-   ваше приложение (или его документацию Swagger) в браузере:
+4. Eureka UI:
+   kubectl port-forward -n {{ include "todo-chart.namespace" . }} svc/eureka-server 8761:8761
+   Открыть http://localhost:8761
 
-   minikube service api-gateway -n {{ .Release.Namespace }}
+5. Zipkin UI:
+   kubectl port-forward -n {{ include "todo-chart.namespace" . }} svc/zipkin-service 9411:9411
+   Открыть http://localhost:9411
 
 ===============================================================================

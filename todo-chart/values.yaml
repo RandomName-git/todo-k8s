@@ -1,38 +1,109 @@
-# todo-app-chart/values.yaml
-
-# Глобальные настройки для всех сервисов
+# Глобальные настройки
 global:
-  imageRegistry: "radiodnov"
+  imageRegistry: radiodnov
   imageTag: "1.0.0"
+  namespace: todo-app
 
-# Список наших микросервисов с их уникальными параметрами
+# Список микросервисов (как у вас)
 microservices:
   user-service:
     port: 8081
-    dbName: "user_db"
-    dbBouncer: "pgbouncer-user"
+    dbName: user_db
+    dbBouncer: pgbouncer-user
     resources:
       requestMemory: "256Mi"
       limitMemory: "512Mi"
-
   task-service:
     port: 8082
-    dbName: "task_db"
-    dbBouncer: "pgbouncer-task"
+    dbName: task_db
+    dbBouncer: pgbouncer-task
     resources:
       requestMemory: "256Mi"
       limitMemory: "512Mi"
-
   analytics-service:
     port: 8085
-    dbName: "analytics_db"
-    dbBouncer: "pgbouncer-analytics"
+    dbName: analytics_db
+    dbBouncer: pgbouncer-analytics
     resources:
       requestMemory: "512Mi"
       limitMemory: "1Gi"
-
   api-gateway:
     port: 8080
     resources:
       requestMemory: "128Mi"
       limitMemory: "256Mi"
+
+# PostgreSQL базы данных (StatefulSet)
+databases:
+  - name: user
+    dbName: user_db
+    storageSize: 1Gi
+  - name: task
+    dbName: task_db
+    storageSize: 1Gi
+  - name: analytics
+    dbName: analytics_db
+    storageSize: 1Gi
+
+# PgBouncer (один на базу)
+pgbouncer:
+  enabled: true
+  image: edoburu/pgbouncer:latest
+  poolMode: transaction
+  maxClientConn: 10000
+  defaultPoolSize: 50
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+# Eureka Server
+eureka:
+  enabled: true
+  image: radiodnov/eureka-server:latest
+  port: 8761
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Zipkin
+zipkin:
+  enabled: true
+  image: openzipkin/zipkin:latest
+  port: 9411
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Общий ConfigMap для application.yml
+commonConfig:
+  enabled: true
+  # Содержимое application.yml будет взято из templates/configmap.yaml
+
+# Ingress для api-gateway
+ingress:
+  enabled: true
+  host: todo.local
+  className: nginx   # если используете nginx ingress
+
+# Настройки для создания namespace (если не создан заранее)
+namespace:
+  create: true
+  name: todo-app
+
+# Имена внешних секретов (должны существовать в кластере)
+secrets:
+  dbSecret: db-secret
+  jwtSecret: jwt-secret
+  kafkaSecret: kafka-secret

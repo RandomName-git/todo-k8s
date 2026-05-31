@@ -1,0 +1,86 @@
+{{- range .Values.databases }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-{{ .name }}
+  namespace: {{ include "todo-chart.namespace" $ }}
+  labels:
+    app: postgres-{{ .name }}
+    component: database
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: postgres-{{ .name }}
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-{{ .name }}
+  namespace: {{ include "todo-chart.namespace" $ }}
+  labels:
+    app: postgres-{{ .name }}
+    component: database
+spec:
+  serviceName: postgres-{{ .name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-{{ .name }}
+  template:
+    metadata:
+      labels:
+        app: postgres-{{ .name }}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15.8
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: {{ .dbName }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.secrets.dbSecret }}
+                  key: db_user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.secrets.dbSecret }}
+                  key: db_password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: {{ .storageSize }}
+  {{- end }}

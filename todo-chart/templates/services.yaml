@@ -1,0 +1,54 @@
+{{- range $name, $config := .Values.microservices }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "todo-chart.namespace" $ }}
+  labels:
+    app: {{ $name }}
+spec:
+  type: {{ if eq $name "api-gateway" }}NodePort{{ else }}ClusterIP{{ end }}
+  ports:
+      - port: {{ $config.port }}
+        targetPort: {{ $config.port }}
+        name: http
+    {{- if eq $name "api-gateway" }}
+        nodePort: 32500
+    {{- end }}
+  selector:
+    app: {{ $name }}
+  {{- end }}
+
+  {{- if .Values.eureka.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eureka-server
+  namespace: {{ include "todo-chart.namespace" . }}
+  labels:
+    app: eureka-server
+spec:
+  ports:
+    - port: {{ .Values.eureka.port }}
+      targetPort: {{ .Values.eureka.port }}
+      name: eureka
+  selector:
+    app: eureka-server
+  {{- end }}
+
+  {{- if .Values.zipkin.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin-service
+  namespace: {{ include "todo-chart.namespace" . }}
+spec:
+  ports:
+    - port: {{ .Values.zipkin.port }}
+      targetPort: {{ .Values.zipkin.port }}
+  selector:
+    app: zipkin-service
+  {{- end }}
