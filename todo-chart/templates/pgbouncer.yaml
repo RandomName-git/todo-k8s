@@ -25,7 +25,7 @@ data:
     idle_transaction_timeout = 60
 
   userlist.txt: |
-    "postgres" "postgres"
+    "{{ $.Values.secrets.db_user }}" "{{ $.Values.secrets.db_password }}"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -52,9 +52,9 @@ spec:
             - containerPort: 5432
           env:
             - name: DB_USER
-              value: postgres
+              value: {{ $.Values.secrets.db_user | quote }}
             - name: DB_PASSWORD
-              value: postgres
+              value: {{ $.Values.secrets.db_password | quote }}
             - name: DB_HOST
               value: postgres-{{ .name }}
             - name: DB_PORT
