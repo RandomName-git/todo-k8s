@@ -16,5 +16,5 @@ spec:
               service:
                 name: api-gateway
                 port:
-                  number: {{ .Values.microservices.api-gateway.port }}
+                  number: {{ (index .Values.microservices "api-gateway").port }}
   {{- end }}
