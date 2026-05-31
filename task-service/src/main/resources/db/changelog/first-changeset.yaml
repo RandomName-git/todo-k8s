@@ -25,3 +25,4 @@ databaseChangeLog:
               - column:
                   name: version
                   type: BIGINT
+      
