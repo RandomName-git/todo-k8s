@@ -1,7 +1,7 @@
 # Глобальные настройки
 global:
   imageRegistry: radiodnov
-  imageTag: "1.0.0"
+  imageTag: "latest"
   namespace: todo-app
 
 # Список микросервисов (как у вас)
