@@ -107,3 +107,10 @@ secrets:
   dbSecret: db-secret
   jwtSecret: jwt-secret
   kafkaSecret: kafka-secret
+
+  # Добавьте эти строки с актуальными значениями:
+  db_user: "postgres"
+  db_password: "postgres"
+  jwt_secret: "SuperSecretJWTKeyToSignTokens2026"
+  kafka_user: "user1"
+  kafka_password: "KafkaSecurePassword987"
